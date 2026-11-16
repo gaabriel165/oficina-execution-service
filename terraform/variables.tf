@@ -57,3 +57,9 @@ variable "point_in_time_recovery" {
   type        = bool
   default     = false
 }
+
+variable "alert_email" {
+  description = "E-mail subscribed to the alerts topic. Leave empty to create the topic without subscription"
+  type        = string
+  default     = ""
+}
