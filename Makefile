@@ -22,7 +22,7 @@ test/coverage:
 	go tool cover -func=coverage.out | tail -1
 
 mocks:
-	mockery
+	go run github.com/vektra/mockery/v3@v3.9.1
 
 swagger:
 	~/go/bin/darwin_amd64/swag init -g cmd/api/main.go
