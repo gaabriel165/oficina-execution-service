@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 const processedMessageRetention = 30 * 24 * time.Hour
@@ -31,7 +30,7 @@ func NewDynamoProcessedMessageRepository(client *dynamodb.Client, tableName stri
 func (r *DynamoProcessedMessageRepository) Exists(ctx context.Context, messageID string) (bool, error) {
 	output, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName:      aws.String(r.tableName),
-		Key:            map[string]types.AttributeValue{"id": &types.AttributeValueMemberS{Value: messageID}},
+		Key:            keyOf(messageID),
 		ConsistentRead: aws.Bool(true),
 	})
 	if err != nil {
