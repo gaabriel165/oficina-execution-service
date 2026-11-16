@@ -1,0 +1,12 @@
+dir: "internal/application/mocks"
+filename: "mock_{{.InterfaceName | snakecase}}.go"
+structname: "Mock{{.InterfaceName}}"
+pkgname: "mocks"
+template: testify
+packages:
+  github.com/gabrielcamargo/oficina-execution-service/internal/domain/repository:
+    config:
+      all: true
+  github.com/gabrielcamargo/oficina-execution-service/internal/domain/messaging:
+    config:
+      all: true

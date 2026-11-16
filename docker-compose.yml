@@ -1,0 +1,27 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${HOST_PORT:-8082}:8080"
+    env_file:
+      - .env
+    depends_on:
+      dynamodb:
+        condition: service_started
+      elasticmq:
+        condition: service_started
+    restart: unless-stopped
+
+  dynamodb:
+    image: amazon/dynamodb-local:3.3.2
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    ports:
+      - "8000:8000"
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.7.1
+    ports:
+      - "9324:9324"
+      - "9325:9325"
+    volumes:
+      - ./local/elasticmq.conf:/opt/elasticmq.conf:ro

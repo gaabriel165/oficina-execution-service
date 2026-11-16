@@ -1,0 +1,33 @@
+# Environment
+.env
+
+# Binary
+bin/
+*.exe
+
+# Go
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Test coverage
+coverage.out
+coverage.html
+
+
+# Local working documents
+docs/roadmap-*.md
+docs/infra-guia-pessoal.md
+docs/roteiro-video-*.md
+docs/entrega*.html
+*.pdf
+
+# AI tooling
+CLAUDE.md
