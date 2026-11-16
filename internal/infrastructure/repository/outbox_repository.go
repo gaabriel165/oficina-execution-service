@@ -66,7 +66,7 @@ func (r *DynamoOutboxRepository) RelayPending(ctx context.Context, limit int, re
 func (r *DynamoOutboxRepository) remove(ctx context.Context, id string) error {
 	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.tableName),
-		Key:       map[string]types.AttributeValue{"id": &types.AttributeValueMemberS{Value: id}},
+		Key:       keyOf(id),
 	})
 	return err
 }
