@@ -1,0 +1,125 @@
+name: CD
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "deploy or destroy"
+        required: true
+        default: "deploy"
+        type: choice
+        options: ["deploy", "destroy"]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cd-execution
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+  SERVICE_NAME: oficina-execution-service
+  NAMESPACE: oficina-execution
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || inputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_wrapper: false
+
+      - name: Provision the service infrastructure
+        run: |
+          terraform -chdir=terraform init -input=false
+          terraform -chdir=terraform apply -auto-approve -input=false
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        run: |
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Create namespace and application secret
+        env:
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+        run: |
+          JWT_SECRET="$(aws ssm get-parameter --name "/oficina-api/jwt_secret" --with-decryption --query Parameter.Value --output text)"
+
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic "$SERVICE_NAME-secrets" \
+            --namespace "$NAMESPACE" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --from-literal=OTEL_EXPORTER_OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy to EKS
+        env:
+          IMAGE_REPOSITORY: ${{ steps.ecr.outputs.registry }}/${{ env.SERVICE_NAME }}
+        run: |
+          cd k8s/base
+          kustomize edit set image "$SERVICE_NAME=$IMAGE_REPOSITORY:${GITHUB_SHA}"
+          cd ../..
+          kubectl apply -k k8s/overlays/prod
+          kubectl rollout status "deployment/$SERVICE_NAME" --namespace "$NAMESPACE" --timeout=300s
+
+      - name: Summary
+        run: |
+          {
+            echo "### Deployed \`${GITHUB_SHA::7}\` to \`$NAMESPACE\`"
+            echo
+            echo '```'
+            kubectl get deploy,hpa,svc -n "$NAMESPACE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  destroy:
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_wrapper: false
+
+      - name: Remove the workload and its load balancer
+        run: |
+          aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+          kubectl delete namespace "$NAMESPACE" --ignore-not-found --timeout=300s
+
+      - name: Destroy the service infrastructure
+        run: |
+          terraform -chdir=terraform init -input=false
+          terraform -chdir=terraform destroy -auto-approve -input=false

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oficina-execution-service
+  labels:
+    app: oficina-execution-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oficina-execution-service
+  template:
+    metadata:
+      labels:
+        app: oficina-execution-service
+    spec:
+      serviceAccountName: oficina-execution-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: api
+          image: oficina-execution-service
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: oficina-execution-service-config
+            - secretRef:
+                name: oficina-execution-service-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20

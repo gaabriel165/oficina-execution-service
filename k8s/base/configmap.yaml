@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-execution-service-config
+data:
+  SERVER_PORT: "8080"
+  APP_ENV: "production"
+  AWS_REGION: "us-east-1"
+  EXECUTION_COMMANDS_QUEUE: "oficina-execution-commands"
+  SAGA_REPLIES_QUEUE: "oficina-saga-replies"
+  DYNAMODB_TABLE_PREFIX: "oficina-execution"
+  DYNAMODB_CREATE_TABLES: "false"
+  OTEL_SERVICE_NAME: "oficina-execution-service"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp.nr-data.net:4318"

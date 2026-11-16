@@ -31,3 +31,11 @@ docs/entrega*.html
 
 # AI tooling
 CLAUDE.md
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+tfplan
