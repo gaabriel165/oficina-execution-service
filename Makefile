@@ -31,7 +31,7 @@ mocks:
 	go run github.com/vektra/mockery/v3@v3.9.1
 
 swagger:
-	~/go/bin/darwin_amd64/swag init -g cmd/api/main.go
+	go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/api/main.go
 
 scan:
 	trivy fs --scanners vuln,secret,misconfig .
