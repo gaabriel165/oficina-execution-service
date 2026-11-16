@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gabrielcamargo/oficina-execution-service/configs"
+	_ "github.com/gabrielcamargo/oficina-execution-service/docs"
 	"github.com/gabrielcamargo/oficina-execution-service/internal/api/consumer"
 	"github.com/gabrielcamargo/oficina-execution-service/internal/api/handler"
 	"github.com/gabrielcamargo/oficina-execution-service/internal/api/middleware"
@@ -17,6 +18,8 @@ import (
 	"github.com/gabrielcamargo/oficina-execution-service/internal/application/usecase/workorder"
 	"github.com/gabrielcamargo/oficina-execution-service/internal/domain/repository"
 	"github.com/gin-gonic/gin"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
@@ -131,6 +134,7 @@ func (s *Server) registerRoutes() {
 
 	s.router.GET("/health", s.health)
 	s.router.GET("/ready", s.ready)
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	v1 := s.router.Group("/api/v1")
 	operators := v1.Group("", middleware.Auth(s.config.JWTSecret), middleware.RequireRole(middleware.RoleOperator))

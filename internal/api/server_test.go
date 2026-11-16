@@ -55,3 +55,9 @@ func TestServer_ShouldRecoverFromPanicWithInternalError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 }
+
+func TestSwagger_ShouldServeDocumentation(t *testing.T) {
+	recorder := perform(newTestServer(nil), "/swagger/index.html")
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+}
