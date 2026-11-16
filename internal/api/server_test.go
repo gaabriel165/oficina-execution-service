@@ -15,7 +15,7 @@ import (
 
 func newTestServer(readiness api.ReadinessCheck) *api.Server {
 	gin.SetMode(gin.TestMode)
-	return api.NewServer(&configs.Config{ServerPort: "0", ServiceName: "oficina-execution-service"}, readiness)
+	return api.NewServer(&configs.Config{ServerPort: "0", ServiceName: "oficina-execution-service"}, api.Dependencies{Readiness: readiness})
 }
 
 func perform(server *api.Server, path string) *httptest.ResponseRecorder {

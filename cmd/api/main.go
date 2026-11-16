@@ -73,14 +73,20 @@ func main() {
 	publisher := messaging.NewSQSPublisher(queueClient, map[domainmessaging.Destination]string{
 		domainmessaging.DestinationSagaReplies: cfg.SagaRepliesQueue,
 	})
+	server := api.NewServer(cfg, api.Dependencies{
+		PartRepo:      infrarepo.NewDynamoPartRepository(dynamoClient, tables.Catalog),
+		ServiceRepo:   infrarepo.NewDynamoServiceRepository(dynamoClient, tables.Catalog),
+		WorkOrderRepo: infrarepo.NewDynamoWorkOrderRepository(dynamoClient, tables.WorkOrders, tables.Catalog, tables.Outbox),
+		Readiness: func(ctx context.Context) error {
+			return database.Ping(ctx, dynamoClient, tables)
+		},
+	})
+
 	router := messaging.NewRouter()
+	server.RegisterMessageHandlers(router)
 	consumer := messaging.NewSQSConsumer(queueClient, cfg.ExecutionCommandsQueue, router.Handle,
 		infrarepo.NewDynamoProcessedMessageRepository(dynamoClient, tables.ProcessedMessages))
 	relay := outbox.NewRelay(infrarepo.NewDynamoOutboxRepository(dynamoClient, tables.Outbox), publisher)
-
-	server := api.NewServer(cfg, func(ctx context.Context) error {
-		return database.Ping(ctx, dynamoClient, tables)
-	})
 
 	var workers sync.WaitGroup
 	workers.Add(2)
